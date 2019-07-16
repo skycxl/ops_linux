@@ -1,0 +1,129 @@
+***************************************  saltstack *************************************************
+• 使用SSL证书签方的方式进行认证管理
+
+• 底层使用ZeroMQ消息队列pub/sub方式通信
+
+    – 号称世界上最快的消息队列ZeroMQ能快速在成千上万台主机上进行各种操作
+
+    – 采用RSA Key方式确认身收指令执行。
+	 
+    - saltstack依赖于zeromq消息队列，采用yaml格式编写配置文件，比较简单。
+Saltstack架构
+
+• Saltstack基于C/S架构
+
+    – 服务器端称作Master
+
+    – 客户端称作Minion
+
+• 可以实现传统处理方式,即:客户端发送请求给服务器,服务器收到请求后处理请求,再将结果返回
+
+• 也可以使用消息队列中的发布与订阅(pub/sub)服务模式
+
+                     master 
+                      ||			
+      				zeroMQ
+             ||        ||        ||
+           minion	minion	   minion
+Saltstack工作机制
+
+• Master和Minion都以守护进程的方式运行
+
+• Master监听配置文件里定义的ret_port(接收minion请求),和publish_port(发布消息)的端口
+
+• 当Minion运行时,它会自动连接到配置文件里定义的Master地址ret_port端口进行连接认证
+
+• 当Master和Minion可以正常通信后,就可以进行各种各样的配置管理工作了
+
+****************************************************************************************
+master部署SaltStack  saltstack软件包依赖epel-release源
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+yum install epel-release -y
+yum install salt-master -y
+service salt-master start
+slave部署SaltStack
+wget -O /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+yum install epel-release -y
+yum install salt-minion -y
+sed -i 's/#master: salt/master: IPADDRESS/g' /etc/salt/minion 
+#IPADDRESS 为Master服务器地址 可以添加多个master地址
+id：编写客户端的名字也可以不写
+
+service salt-minion start
+********************************************************************************************
+salt-master 一些模块的使用
+*cmd模块
+salt ‘*’ sys.doc cmd 查看模块的使用方法
+salt '*' cmd.has_exec cat  #检测cat在minion端是否存在，存在返回Turn 否则返回False
+salt '*' cmd.retcode "file /bin/bash" #在minon端执行一条shell命令成功返回0 否则返回1
+salt '*' cmd.run_stderr "ls -l | awk '/foo/{print \$2}'"   #执行命令成功不返回结果，失败返回结果
+salt ‘*’ cmd.run  'ls -l'  #就像在本地执行命令一样
+salt '*' cmd.script salt://scripts/runme.sh   #从远程服务器下载脚本并运行
+salt ‘*’ cmd.shell 'ls -l' #和cmd.run功能差不多
+salt '*' cmd.which cat   #查看命令的路径
+salt '*' cmd.which_bin '[pip2, pip, pip-python]' #这是定义了一个列表，返回在命令列表中找到的第一个命令
+*cp模块
+salt '*' cp.get_file salt://path/to/file /minion/dest #从master拷贝单个文件到minion/dest目录下
+salt '*' cp.get_dir salt://path/to/dir/ /minion/dest  #从master递归目录拷贝到minion/dest目录下
+salt '*' cp.get_url salt://my/file /tmp/mine
+salt '*' cp.get_url http://www.slashdot.org /tmp/index.html  #从本地或者网站上写人文件到minion指定的文件中
+*file模块
+ salt '*' file.access /opt/check.sh （f代表存在，rwx分别代表读、写、执行权限） #查看文件是否存在以及有没有指定的权限
+ file模块的用法很多，更改文件的属性的，添加文件内容等等用的时候可以使用 sys.doc file查看使用方法
+*hosts模块
+salt '*' hosts.add_host <ip> <alias> #在hosts添加数值，如果存在继续追加
+salt '*' hosts.set_host <ip><alias>hosts.set_host这个的不同之处就是，如果这个IP不存在则创建新的一条hosts记录，如果hosts存在这个IP的解析记录。会完全覆盖掉。也就是旧的IP解析记录完全变成现在的结果
+*cron模块
+salt '*' cron.set_job root '*' '*' '*' '*' 1 /usr/local/weekly #添加定时任务，必须指定用户
+salt '*' cron.rm_job root /usr/local/weekly   #删除定时任务
+salt '*' cron.list_tab root   #差看用户的定时任务
+*network模块
+salt '*' network.get_hostname #查看主机名
+salt '*' network.get_route 10.10.10.10 #添加路由
+salt '*' network.ping www.baidu.com return_boolean=True timeout=3 #如果不加return_boolean=True显示的是ping的结果信息，加了就是如果ping通了就返回True，ping不通就返回False。timeout=3就是ping的时间，3秒超时这样能快速返回结果。这个其实挺好用的，比如我们可以测试哪些主机的DNS设置有问题不能正常解析啊，或者是我们内网DNS指向了一个非公网的域名解析，可以通过这个看哪些主机设置了内网DNS而哪些没设置内网DNS。
+*sys模块
+sys.argspec的用法（返回Salt执行模块中函数的参数说明
+salt '*' sys.argspec sys   #查看sys模块里面所有函数的规则说明，或者#salt '*' sys.argspec 'sys.*'
+salt '*' sys.list_modules #列出所有的模块
+*service模块
+salt '*' service.available sshd   #检查指定的服务是否可以使用
+salt '*' service.disable <service name>  #禁止开机启动的服务
+salt '*' service.enable <service name>  #开机启动服务
+salt '*' service.force_reload <service name>  #从新启动服务
+salt '*' service.start <service name>  #启动指定名称的服务
+salt '*' service.status <service name> #查看指定服务的状态，启动状态是True，关闭状态是False  
+salt '*' service.stop <service name> #关闭指定名称的服务
+*pkg模块
+ salt '*' pkg.install httpd  #相当于yum -y install httpd
+ salt '*' pkg.remove <package name>  #卸载指定的软件
+salt '*' pkg.version <package name>  #查看指定软件的版本号
+
+
+*********************************YAML剧本编写***************************************************
+后续添加
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
