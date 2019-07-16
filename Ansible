@@ -1,0 +1,120 @@
+******************************Ansible*****************************************************
+ansible是一种自动化运维工具,基于paramiko开发的,并且基于模块化工作，Ansible是一种集成IT系统的配置管理、应用部署、执行特定任务的开源平台，它是基于python语言，由Paramiko和PyYAML两个关键模块构建。集合了众多运维工具的优点，实现了批量系统配置、批量程序部署、批量运行命令等功能.ansible是基于模块工作的,本身没有批量部署的能力.真正具有批量部署的是ansible所运行的模块，ansible只是提供一种框架.ansible不需要在远程主机上安装client/agents，因为它们是基于ssh来和远程主机通讯的.
+ansible被定义为配置管理工具,配置管理工具通常具有以下功能:
+
+确保所依赖的软件包已经被安装
+配置文件包含正确的内容和正确的权限
+相关服务被正确运行
+Ansible 学习参考文章https://www.w3cschool.cn/automate_with_ansible/automate_with_ansible-db6727oq.html
+*************************************************************
+####ansible基本架构
+
+  ansible系统由控制主机和被管理主机组成,控制主机不支持windows平台
+核心: ansible
+Core Modules: ansible自带的模块
+Custom Modules: 核心模块功能不足时,用户可以添加扩展模块
+Plugins: 通过插件来实现记录日志,发送邮件或其他功能
+Playbooks: 剧本,YAML格式文件，多个任务定义在一个文件中，定义主机需要调用哪些模块来完成的功能
+Connectior Plugins: ansible基于连接插件连接到各个主机上,默认是使用ssh
+Host Inventory: 记录由Ansible管理的主机信息，包括端口、密码、ip等
+********************************************************************
+######ansible特点
+部署简单, 只需要在控制主机上部署ansible环境,被控制端上只要求安装ssh和python 2.5以上版本,这个对于类unix系统来说相当与无需配置.
+no angents: 被管控节点无需安装agent
+no server: 无服务端,使用是直接调用命名
+modules in any languages: 基于模块工作, 可以使用任意语言开发模块
+易读的语法: 基于yaml语法编写playbook
+基于推送模式: 不同于puppet的拉取模式,直接由调用者控制变更在服务器上发生的时间
+模块是幂等性的:定义的任务已存在则不会做任何事情,意味着在同一台服务器上多次执行同一个playbook是安全的
+*****************************************************************************
+#####Ansible任务执行模式分为以下两种:
+
+
+ad-hoc模式(点对点模块)
+使用单个模块,支持批量执行单条命令,相当与在bash中执行一句shell命令
+
+playbook模式(剧本模式)
+ansible主要的管理方式,通过多个task的集合完成一类功能,可以理解为多个ad-hoc的配置文件
+
+******************************************************************************
+####Ansible执行流程
+读取ansible.cfg文件 ==> 通过规则过滤inventory中定义的主机列表 ==> 加载task对应的模块文件 ==> 通过ansible core将模块或者命令打包成python脚本文件 ==> 将临时的文件传输至远程服务器 ==> 对应执行用户家目录的‘.ansible/tmp/xx/xx.py’文件 == https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+ yum -y install ansible 
+--*生成密钥
+  ssh-keygen       #生成密钥(密钥在.ssh/目录下面) 
+  ssh-copy-id  IP   #分发密钥到各个主机
+--*配置ansible
+  /etc/ansible/hosts  #在配置文件中添加主机
+  [组名]
+  ip:端口
+--*Ansible优化
+  .关闭ansible的SSH密钥检测 
+  host_key_checking = False
+  UseDNS=no
+  ..openssh链接优化
+  sed  -i  '/^GSSAPI/s/yes/no/g；/UseDNS/d；/Protocol/aUseDNS no' /etc/ssh/sshd_config
+  .SSH pipelining加速Ansible
+  sed    -i    '/^pipelining/s/False/True/g'    /etc/ansible/ansible.cf
+
+********************************************************************************
+ setup模块
+ 查看系统的一些信息
+ ping模块
+ 查看主机的运行状态
+ file模块
+ 设置的文件的属性
+ force：需要在两种情况下强制创建软链接，一种是源文件不存在，但之后会建立的情况下；另一种是目标软链接已存在，需要先取消之前的软链，然后创建新的软链，有两个选项：yes|no
+ group：定义文件/目录的属组
+ mode：定义文件/目录的权限
+ owner：定义文件/目录的属主
+ path：必选项，定义文件/目录的路径
+ recurse：递归设置文件的属性，只对目录有效
+ src：被链接的源文件路径，只应用于state=link的情况
+ dest：被链接到的路径，只应用于state=link的情况
+state：
+       directory：如果目录不存在，就创建目录
+       file：即使文件不存在，也不会被创建
+       link：创建软链接
+       hard：创建硬链接
+       touch：如果文件不存在，则会创建一个新的文件，如果文件或目录已存在，则更新其最后修改时间
+       absent：删除目录、文件或者取消链接文件
+#示例
+## 远程文件符号链接创建
+ ansible storm_cluster -m file -a "src=/etc/resolv.conf dest=/tmp/resolv.conf state=link"
+
+ 
+https://www.cnblogs.com/gzxbkk/p/7515634.html
+  
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
